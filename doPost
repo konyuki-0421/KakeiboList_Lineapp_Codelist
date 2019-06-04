@@ -1,0 +1,124 @@
+//トークンを取得
+var CHANNEL_ACCESS_TOKEN = '自身のトークンを入力';
+  
+/*
+//トーク開始
+*/
+function doPost(e) {
+var reply_token= JSON.parse(e.postData.contents).events[0].replyToken;
+if (typeof reply_token === 'undefined') {
+return;
+}
+  
+//メッセージ取得
+var com = JSON.parse(e.postData.contents).events[0].message.text;
+  
+//スプレッドシート設定
+var ss = SpreadsheetApp.openById('自身のスプレッドシートID');
+var ss2 = ss.getSheets()[1];
+var ss3 = ss.getSheets()[2];
+var ss4 = ss.getSheets()[3];
+var flag = ss.getRange('F1').getValue();//状態フラグ
+  
+//変数設定-返信
+var reply_messages;
+ 
+//フラグで状態を判断
+if(flag == 1){//「買った」を言った後
+  
+reply_messages = set_item_purchased_(com, ss1);
+  
+}else if(flag == 2){//「追加」を言った後
+  
+reply_messages = set_item_purchase_list_(com, ss1);
+  
+}else if(flag == 3){//「支出」を言った後
+
+reply_messages = set_money_payment_(com, ss1, ss2);
+
+}else if(flag == 4){//「収入」を言った後
+
+reply_messages = set_money_income_(com, ss1, ss3);
+
+}else{//それ以外
+  
+reply_messages = command_list(com, ss1, ss2, ss3, ss4, flag);
+  
+}
+  
+//返信設定
+var url = 'https://api.line.me/v2/bot/message/reply';
+UrlFetchApp.fetch(url, {
+'headers': {
+'Content-Type': 'application/json; charset=UTF-8',
+'Authorization': 'Bearer ' + CHANNEL_ACCESS_TOKEN,
+},
+'method': 'post',
+'payload': JSON.stringify({
+'replyToken': reply_token,
+'messages': [{
+'type': 'text',
+'text': reply_messages,
+}],
+}),
+});
+return ContentService.createTextOutput(JSON.stringify({'content': 'post ok'})).setMimeType(ContentService.MimeType.JSON);
+}
+  
+/*
+//コマンド分岐
+*/
+function command_list(com, ss1, ss2, ss3, ss4, flag)
+{
+   
+Logger.log(String(com));
+  
+//コマンド識別
+if (String(com) == '買い物リスト'){
+  
+return get_purchase_list_(ss1);
+  
+}else if(String(com) == '買った') {
+  
+ss1.getRange('F1').setValue(1);//状態フラグ1に
+return　'何買ってきてくれたの～';
+  
+}else if (String(com) == '追加'){
+  
+ss1.getRange('F1').setValue(2);//状態フラグ2に
+return　'何が欲しいん？';
+  
+}else if (String(com) == '家計簿'){
+
+return get_money_list_(ss1, ss4);
+
+}else if (String(com) == '支出'){
+
+ss1.getRange('F1').setValue(3);//状態フラグ3に
+return '支出の品目と金額を記入してね！\n＊カテゴリ＊\n食費\nコンビニ\n外食\n交際費\n日用雑貨\n美容・衣服\n医療費\n通信\nガソリン\n駐車場\n保険\nカード\n大型出費\nその他';
+
+}else if (String(com) == '収入'){
+
+ss1.getRange('F1').setValue(4);//状態フラグ4に
+return '収入の品目と金額を記入してね！\n＊カテゴリ＊\n給料\n臨時収入';
+
+}else if (String(com) == 'ヘルプ'){
+
+return　'どのヘルプ？\n1.家計簿\n2.買い物リスト\n何もない場合は「キャンセル」と入力してね！';
+  
+}else if (String(com) == '1'){
+
+return '＊家計簿ヘルプ＊\n支出入力：「支出 (金額)」\n収入入力：「収入 (金額)」\n家計簿表示：「家計簿」';
+
+}else if (String(com) == '2'){
+
+return '＊買い物リストヘルプ＊\nリストに追加：「追加」\nリストから削除：「買った」\nリスト表示：「買い物リスト」';
+
+}else if (String(com) == 'キャンセル'){
+
+return 'キャンセルしました';
+
+}else {
+return 'じゃがりこ欲しいな～';
+}  
+}
